@@ -3,16 +3,20 @@ import streamlit as st
 from google import genai
 from google.genai import types
 from streamlit_mic_recorder import mic_recorder
+from elevenlabs.client import ElevenLabs
+from elevenlabs import save
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Mi Asistente IA con Voz",
+    page_title="Asistente Tecnico en Construccion",
     page_icon="🎙️",
     layout="wide"
 )
 
-# Inicializar cliente de GenAI
+# Inicializar clientes (buscan automáticamente las variables de entorno o secrets de Streamlit)
 client = genai.Client()
+eleven_client = ElevenLabs(api_key=st.secrets.get("ELEVENLABS_API_KEY", os.getenv("ELEVENLABS_API_KEY")))
+
 MODEL_ID = "gemini-3.5-flash-lite"
 
 # Inicializar historial en sesión
@@ -60,20 +64,14 @@ prompt_to_process = None
 
 # 1. Verificar si el usuario habló mediante el grabador de voz
 if audio_data:
-    # El grabador devuelve un diccionario con los bytes del audio
     audio_bytes = audio_data['bytes']
-    
-    # Guardamos temporalmente el audio grabado
     audio_path = "temp_audio.wav"
     with open(audio_path, "wb") as f:
         f.write(audio_bytes)
         
     with st.spinner("Procesando tu voz..."):
         try:
-            # Subimos el archivo de audio a la API de Gemini para que lo escuche y transcriba/responda
             audio_file_ref = client.files.upload(file=audio_path)
-            
-            # Pedimos a Gemini que transcriba y actúe sobre la instrucción de voz
             voice_response = client.models.generate_content(
                 model=MODEL_ID,
                 contents=[audio_file_ref, "Transcribe este audio brevemente y responde a la solicitud planteada en él con un tono técnico y profesional."]
@@ -89,12 +87,10 @@ if chat_input := st.chat_input("Escribe tu mensaje o consulta..."):
 
 # --- PROCESAR MENSAJE (Sea de texto o de voz) ---
 if prompt_to_process:
-    # Agregar mensaje al historial
     st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     with st.chat_message("user"):
         st.markdown(prompt_to_process)
 
-    # Preparar contenidos y archivos
     contents = []
     gemini_files = []
     if uploaded_files:
@@ -123,17 +119,19 @@ if prompt_to_process:
                 assistant_response = response.text
                 st.markdown(assistant_response)
                 
-                # --- SINTETIZADOR DE VOZ (Texto a Voz nativo en el navegador) ---
-                # Usamos JavaScript para que el navegador lea en voz alta la respuesta del asistente
-                js_speech = f"""
-                <script>
-                    const text = {repr(assistant_response)};
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'es-ES'; // Configurado en español
-                    window.speechSynthesis.speak(utterance);
-                </script>
-                """
-                st.components.v1.html(js_speech, height=0)
+                # --- RESPUESTA DE AUDIO CON ELEVENLABS ---
+                with st.spinner("Generando audio profesional..."):
+                    audio_generator = eleven_client.generate(
+                        text=assistant_response,
+                        voice="Rachel",  # Puedes cambiar el nombre de la voz si prefieres otra
+                        model="eleven_multilingual_v2"
+                    )
+                    
+                    audio_file_path = "respuesta_audio.mp3"
+                    save(audio_generator, audio_file_path)
+                    
+                    # Reproductor de audio nativo con reproducción automática
+                    st.audio(audio_file_path, format="audio/mp3", autoplay=True)
                 
                 # Guardar respuesta en historial
                 st.session_state.messages.append({"role": "assistant", "content": assistant_response})
