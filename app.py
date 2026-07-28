@@ -119,16 +119,23 @@ if prompt_to_process:
                 assistant_response = response.text
                 st.markdown(assistant_response)
                 
-                # --- RESPUESTA DE AUDIO CON ELEVENLABS ---
+              # --- RESPUESTA DE AUDIO CON ELEVENLABS (CORREGIDO) ---
                 with st.spinner("Generando audio profesional..."):
-                    audio_generator = eleven_client.generate(
+                    # Usamos la sintaxis correcta para la versión actual de la librería
+                    audio_generator = eleven_client.text_to_speech.convert(
                         text=assistant_response,
-                        voice="Rachel",  # Puedes cambiar el nombre de la voz si prefieres otra
-                        model="eleven_multilingual_v2"
+                        voice_id="JBFqnCBsd6RMkjVDRZzb", # ID estándar (corresponde a 'Rachel')
+                        model_id="eleven_multilingual_v2",
+                        output_format="mp3_44100_128",
                     )
                     
-                    audio_file_path = "respuesta_audio.mp3"
-                    save(audio_generator, audio_file_path)
+            audio_file_path = "respuesta_audio.mp3"
+                    
+                    # Guardamos el flujo de bytes directamente en el archivo MP3
+                    with open(audio_file_path, "wb") as f:
+                        for chunk in audio_generator:
+                            if chunk:
+                                f.write(chunk)
                     
                     # Reproductor de audio nativo con reproducción automática
                     st.audio(audio_file_path, format="audio/mp3", autoplay=True)
