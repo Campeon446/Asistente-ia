@@ -4,7 +4,6 @@ from google import genai
 from google.genai import types
 from streamlit_mic_recorder import mic_recorder
 from elevenlabs.client import ElevenLabs
-from elevenlabs import save
 
 # Configuración de la página
 st.set_page_config(
@@ -13,11 +12,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Inicializar clientes (buscan automáticamente las variables de entorno o secrets de Streamlit)
+# Inicializar clientes
 client = genai.Client()
 eleven_client = ElevenLabs(api_key=st.secrets.get("ELEVENLABS_API_KEY", os.getenv("ELEVENLABS_API_KEY")))
 
-MODEL_ID = "gemini-3.5-flash-lite"
+MODEL_ID = "gemini-2.5-flash"
 
 # Inicializar historial en sesión
 if "messages" not in st.session_state:
@@ -119,19 +118,16 @@ if prompt_to_process:
                 assistant_response = response.text
                 st.markdown(assistant_response)
                 
-              # --- RESPUESTA DE AUDIO CON ELEVENLABS (CORREGIDO) ---
+                # --- RESPUESTA DE AUDIO CON ELEVENLABS ---
                 with st.spinner("Generando audio profesional..."):
-                    # Usamos la sintaxis correcta para la versión actual de la librería
                     audio_generator = eleven_client.text_to_speech.convert(
                         text=assistant_response,
-                        voice_id="JBFqnCBsd6RMkjVDRZzb", # ID estándar (corresponde a 'Rachel')
+                        voice_id="JBFqnCBsd6RMkjVDRZzb",  # Rachel (voz por defecto)
                         model_id="eleven_multilingual_v2",
                         output_format="mp3_44100_128",
                     )
                     
-            audio_file_path = "respuesta_audio.mp3"
-                    
-                    # Guardamos el flujo de bytes directamente en el archivo MP3
+                    audio_file_path = "respuesta_audio.mp3"
                     with open(audio_file_path, "wb") as f:
                         for chunk in audio_generator:
                             if chunk:
@@ -144,4 +140,4 @@ if prompt_to_process:
                 st.session_state.messages.append({"role": "assistant", "content": assistant_response})
                 
             except Exception as e:
-                st.error(f"Ocurrió un error: {e}")
+                st.error(f"Ocurrió un error en la ejecución: {e}")
