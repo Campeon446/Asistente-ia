@@ -16,7 +16,7 @@ st.set_page_config(
 client = genai.Client()
 eleven_client = ElevenLabs(api_key=st.secrets.get("ELEVENLABS_API_KEY", os.getenv("ELEVENLABS_API_KEY")))
 
-MODEL_ID = "gemini-2.5-flash"
+MODEL_ID = "gemini-3.5-flash-lite"
 
 # Inicializar historial en sesión
 if "messages" not in st.session_state:
