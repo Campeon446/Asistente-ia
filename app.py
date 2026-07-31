@@ -92,16 +92,20 @@ if prompt_to_process:
 
     contents = []
     gemini_files = []
-    if uploaded_files:
-        for file in uploaded_files:
-            temp_path = f"temp_{file.name}"
-            with open(temp_path, "wb") as f:
-                f.write(file.getbuffer())
-            g_file = client.files.upload(file=temp_path)
-            gemini_files.append(g_file)
-            os.remove(temp_path)
-        contents.extend(gemini_files)
-
+   si uploaded_files:
+          para archivo en uploaded_files:
+              # Limpiamos el nombre para evitar errores de codificación con tildes o espacios
+              nombre_original = archivo.Nombre
+              nombre_limpio = unicodedata.normalize('NFKD', nombre_original).encode('ASCII', 'ignore').decode('ASCII')
+              nombre_limpio = re.sub(r'[^a-zA-Z0-9_.-]', '_', nombre_limpio)
+              
+              temp_path = f"temp_{nombre_limpio}"
+              con abierto(temp_path, "WB") como f:
+                  f.escribe(archivo.getbuffer())
+              g_file = cliente.Archivos.Subida(archivo=temp_path)
+              gemini_files.Añadir(g_file)
+              OS.eliminar(temp_path)
+          Índice.Extender(gemini_files)
     contents.append(prompt_to_process)
 
     # Generar respuesta del modelo
