@@ -94,7 +94,8 @@ if prompt_to_process:
 
     contents = []
     gemini_files = []
-  if uploaded_files:
+    
+    if uploaded_files:
         for archivo in uploaded_files:
             # Limpiamos el nombre para evitar errores con tildes o espacios
             nombre_original = archivo.name
@@ -104,10 +105,15 @@ if prompt_to_process:
             temp_path = f"temp_{nombre_limpio}"
             with open(temp_path, "wb") as f:
                 f.write(archivo.getbuffer())
-            g_file = cliente.files.upload(file=temp_path)
+            
+            # Usamos 'client' (en inglés) en lugar de 'cliente'
+            g_file = client.files.upload(file=temp_path)
             gemini_files.append(g_file)
             os.remove(temp_path)
-        indice.extend(gemini_files)
+            
+        # Usamos 'contents' para adjuntar los archivos a la petición del modelo
+        contents.extend(gemini_files)
+        
     contents.append(prompt_to_process)
 
     # Generar respuesta del modelo
