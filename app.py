@@ -5,18 +5,16 @@ import re
 from google import genai
 from google.genai import types
 from streamlit_mic_recorder import mic_recorder
-from elevenlabs.client import ElevenLabs
 
 # Configuración de la página
 st.set_page_config(
     page_title="Asistente Tecnico en Construccion",
-    page_icon="🎙️",
+    page_icon="🏗️",
     layout="wide"
 )
 
-# Inicializar clientes
+# Inicializar cliente de Gemini
 client = genai.Client()
-eleven_client = ElevenLabs(api_key=st.secrets.get("ELEVENLABS_API_KEY", os.getenv("ELEVENLABS_API_KEY")))
 
 MODEL_ID = "gemini-3.5-flash-lite"
 
@@ -32,7 +30,7 @@ with st.sidebar:
         st.rerun()
         
     st.markdown("---")
-    st.subheader("🎙️ Entrada de Voz")
+    st.subheader("🎙️ Entrada de Voz (Transcripción)")
     st.markdown("Presiona el botón para hablarle al asistente:")
     
     # Componente para grabar audio desde el micrófono
@@ -52,15 +50,15 @@ with st.sidebar:
     )
 
 # --- CUERPO PRINCIPAL ---
-st.title("Asistente IA Interactivo con Voz")
-st.caption("Escribe, adjunta documentos o utiliza tu voz para interactuar.")
+st.title("Asistente Técnico en Construcción")
+st.caption("Escribe, adjunta tus planos o utiliza tu voz para obtener cómputos métricos y asesoramiento.")
 
 # Mostrar historial de chat
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Variable para capturar el texto de entrada (sea por teclado o por voz)
+# Variable para capturar el texto de entrada
 prompt_to_process = None
 
 # 1. Verificar si el usuario habló mediante el grabador de voz
@@ -75,7 +73,7 @@ if audio_data:
             audio_file_ref = client.files.upload(file=audio_path)
             voice_response = client.models.generate_content(
                 model=MODEL_ID,
-                contents=[audio_file_ref, "Transcribe este audio brevemente y responde a la solicitud planteada en él con un tono técnico y profesional."]
+                contents=[audio_file_ref, "Transcribe este audio brevemente y responde a la solicitud planteada en él con un tono técnico y profesional en construcción."]
             )
             prompt_to_process = voice_response.text
             os.remove(audio_path)
@@ -83,10 +81,10 @@ if audio_data:
             st.error(f"Error procesando el audio: {e}")
 
 # 2. Verificar si el usuario escribió en el cuadro de texto tradicional
-if chat_input := st.chat_input("Escribe tu mensaje o consulta..."):
+if chat_input := st.chat_input("Escribe tu consulta o los detalles de la obra..."):
     prompt_to_process = chat_input
 
-# --- PROCESAR MENSAJE (Sea de texto o de voz) ---
+# --- PROCESAR MENSAJE ---
 if prompt_to_process:
     st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     with st.chat_message("user"):
@@ -106,47 +104,27 @@ if prompt_to_process:
             with open(temp_path, "wb") as f:
                 f.write(archivo.getbuffer())
             
-            # Usamos 'client' (en inglés) en lugar de 'cliente'
             g_file = client.files.upload(file=temp_path)
             gemini_files.append(g_file)
             os.remove(temp_path)
             
-        # Usamos 'contents' para adjuntar los archivos a la petición del modelo
         contents.extend(gemini_files)
         
     contents.append(prompt_to_process)
 
     # Generar respuesta del modelo
     with st.chat_message("assistant"):
-        with st.spinner("Pensando respuesta..."):
+        with st.spinner("Analizando plano y calculando materiales..."):
             try:
                 response = client.models.generate_content(
                     model=MODEL_ID,
                     contents=contents,
                     config=types.GenerateContentConfig(
-                        system_instruction="Te comportas como un asistente técnico experto, preciso y profesional."
+                        system_instruction="Te comportas como un asistente técnico experto en construcción en seco, cómputos métricos de perfilería, yeso, aislamientos y tabiquería. Da respuestas estructuradas, profesionales y claras."
                     )
                 )
                 assistant_response = response.text
                 st.markdown(assistant_response)
-                
-                # --- RESPUESTA DE AUDIO CON ELEVENLABS ---
-                with st.spinner("Generando audio profesional..."):
-                    audio_generator = eleven_client.text_to_speech.convert(
-                        text=assistant_response,
-                        voice_id="JBFqnCBsd6RMkjVDRZzb",  # Rachel (voz por defecto)
-                        model_id="eleven_multilingual_v2",
-                        output_format="mp3_44100_128",
-                    )
-                    
-                    audio_file_path = "respuesta_audio.mp3"
-                    with open(audio_file_path, "wb") as f:
-                        for chunk in audio_generator:
-                            if chunk:
-                                f.write(chunk)
-                    
-                    # Reproductor de audio nativo con reproducción automática
-                    st.audio(audio_file_path, format="audio/mp3", autoplay=True)
                 
                 # Guardar respuesta en historial
                 st.session_state.messages.append({"role": "assistant", "content": assistant_response})
